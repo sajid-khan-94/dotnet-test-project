@@ -1,0 +1,94 @@
+trigger:
+- master
+
+resources:
+- repo: self
+
+
+variables:
+  docker_repo: sajid1994/sajidaspnetapp
+  tag: '$(Build.BuildId)'
+  replica_no: 1
+
+stages:
+  - stage: Build
+    displayName: BuildImage
+    jobs:
+    - job: Build
+      displayName: Build 
+      pool:
+        name: Sajid-PC-SH
+      steps:
+      - task: Docker@2
+        inputs:
+          containerRegistry: 'Docker HUB'
+          repository: 'sajid1994/sajidaspnetapp'
+          command: 'buildAndPush'
+          Dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+      
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: '$(Pipeline.Workspace)/s/manifest'
+          artifact: 'yaml-files'
+          publishLocation: 'pipeline'
+  
+  - stage: Deploy
+    displayName: Deploying to K8 Cluster
+    variables:
+      docker_repo: sajid1994/sajidaspnetapp
+      tag: '$(Build.BuildId)'
+      replica_no: 1
+    dependsOn: Build
+    jobs:
+    - job: Deploying
+      displayName: Pushing on test K8 Cluster
+      pool:
+        name: Sajid-PC-SH
+      steps:
+        - task: DownloadBuildArtifacts@1
+          inputs:
+            buildType: 'current'
+            downloadType: 'specific'
+            downloadPath: '$(System.ArtifactsDirectory)/'
+
+        - task: replacetokens@5
+          inputs:
+            rootDirectory: '$(System.ArtifactsDirectory)/yaml-files/'
+            targetFiles: 'deployment.yaml'
+            encoding: 'auto'
+            tokenPattern: 'custom'
+            tokenPrefix: '#'
+            tokenSuffix: '#'
+            writeBOM: true
+            actionOnMissing: 'warn'
+            keepToken: false
+            actionOnNoFiles: 'continue'
+            enableTransforms: false
+            enableRecursion: false
+            useLegacyPattern: false
+            enableTelemetry: true
+        - task: Kubernetes@1
+          inputs:
+            connectionType: 'Kubernetes Service Connection'
+            kubernetesServiceEndpoint: 'Sajid-Test-K8-Env-sajid-test-cluster-default-1665940027096'
+            namespace: 'default'
+            command: 'apply'
+            useConfigurationFile: true
+            configuration: '$(System.ArtifactsDirectory)/yaml-files/'
+            secretType: 'dockerRegistry'
+            containerRegistryType: 'Container Registry'
+            dockerRegistryEndpoint: 'Docker HUB'
+
+        
+
+    
+      
+
+    
+
+        
+
+ 
+
+
+        

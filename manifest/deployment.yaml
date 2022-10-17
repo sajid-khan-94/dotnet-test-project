@@ -1,0 +1,20 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: sajidwebapp
+spec:
+  replicas: #replica_no#
+  selector:
+    matchLabels:
+      app: sajidwebapp
+  template:
+    metadata:
+      labels:
+        app: sajidwebapp 
+    spec:
+      containers:
+        - name: sajidwebapp 
+          image: #docker_repo#:#tag#
+          #sajid1994/sajidaspnetapp
+          ports:
+          - containerPort: 80
